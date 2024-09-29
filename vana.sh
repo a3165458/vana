@@ -74,6 +74,7 @@ function clone_and_install_repos() {
     rm -rf $DLP_PATH
     git clone https://github.com/vana-com/vana-dlp-chatgpt.git $DLP_PATH
     cd $DLP_PATH
+    cp .env.example .env
 
     echo "创建并激活 Python 虚拟环境..."
     python3.11 -m venv myenv
