@@ -12,30 +12,36 @@ fi
 
 # 在Ubuntu 22.04容器中安装并运行DLP Validator节点
 function install_dlp_node() {
-    echo "在Ubuntu 22.04容器中安装并运行DLP Validator节点..."
-    docker run -d --name dlp-validator-container ubuntu:22.04 /bin/bash -c '
-    # 安装依赖
+    echo "在 Docker 容器中安装 DLP Validator 节点..."
+    docker run -it --name dlp-validator-container -w /root ubuntu:22.04 /bin/bash -c '
+    # 更新并安装必要的依赖
     apt update && apt upgrade -y
     apt install -y curl wget jq make gcc nano git software-properties-common
+    
 
-    # 安装Python和Poetry
+    # 安装 Python 3.11 和 Poetry
     add-apt-repository ppa:deadsnakes/ppa -y
     apt update
     apt install -y python3.11 python3.11-venv python3.11-dev python3-pip
     curl -sSL https://install.python-poetry.org | python3 -
-    echo "export PATH=\"/root/.local/bin:\$PATH\"" >> ~/.bashrc
-    source ~/.bashrc
+    # 直接在当前会话中设置 PATH
+    export PATH="/root/.local/bin:$PATH" 
 
-    # 安装Node.js和npm
+    echo "验证 Poetry 安装..."
+    poetry --version
+
+    # 安装 Node.js 和 npm
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
     apt-get install -y nodejs
+    apt-get install -y npm
 
-    # 安装PM2
+    # 安装 PM2
     npm install pm2@latest -g
 
-    # 克隆仓库并安装依赖
-    git clone https://github.com/vana-com/vana-dlp-chatgpt.git $DLP_PATH
-    cd $DLP_PATH
+    # 克隆 Vana DLP ChatGPT 仓库并安装依赖
+    git clone https://github.com/vana-com/vana-dlp-chatgpt.git
+    cd vana-dlp-chatgpt
+    cp .env.example .env
     poetry install
     pip install vana
 
@@ -43,52 +49,87 @@ function install_dlp_node() {
     vanacli wallet create --wallet.name default --wallet.hotkey default
 
     # 导出私钥
-    vanacli wallet export_private_key --wallet.name default --wallet.coldkey default > /root/coldkey.txt
-    vanacli wallet export_private_key --wallet.name default --wallet.hotkey default > /root/hotkey.txt
+    vanacli wallet export_private_key
+    vanacli wallet export_private_key
+
+    # 确认备份
+    read -p "是否已经备份好私钥,并且对应冷钱包已经领水? (y/n) " backup_confirmed
+    if [ "$backup_confirmed" != "y" ]; then
+        echo "请先备份好助记词，对应冷钱包领水, 然后再继续执行脚本。"
+        exit 1
+    fi
 
     # 生成加密密钥
     ./keygen.sh
 
-    # 将公钥写入.env文件
-    PUBLIC_KEY=$(cat $DLP_PATH/public_key_base64.asc)
-    echo "PRIVATE_FILE_ENCRYPTION_PUBLIC_KEY_BASE64=\"$PUBLIC_KEY\"" >> $DLP_PATH/.env
+    # 将公钥写入 .env 文件
+    PUBLIC_KEY_FILE="/root/vana-dlp-chatgpt/public_key_base64.asc"
+    ENV_FILE="/root/vana-dlp-chatgpt/.env"
+
+    # 检查公钥文件是否存在
+    if [ ! -f "$PUBLIC_KEY_FILE" ]; then
+        echo "公钥文件不存在: $PUBLIC_KEY_FILE"
+        exit 1
+    fi
+
+    # 读取公钥内容
+    PUBLIC_KEY=$(cat "$PUBLIC_KEY_FILE")
+
+    # 将公钥写入 .env 文件
+    echo "PRIVATE_FILE_ENCRYPTION_PUBLIC_KEY_BASE64=\"$PUBLIC_KEY\"" >> "$ENV_FILE"
+
+    echo "公钥已成功写入到 .env 文件中。"
 
     # 部署智能合约
-    cd /root
+    cd $HOME
     git clone https://github.com/Josephtran102/vana-dlp-smart-contracts
     cd vana-dlp-smart-contracts
     npm install -g yarn
     yarn install
     cp .env.example .env
-    nano .env
+    nano .env  # 手动编辑 .env 文件
     npx hardhat deploy --network moksha --tags DLPDeploy
 
     # 注册验证器
-    cd $DLP_PATH
+    cd $HOME
+    cd vana-dlp-chatgpt
     ./vanacli dlp register_validator --stake_amount 10
-    HOTKEY_ADDRESS=$(./vanacli wallet show --wallet.name default --wallet.hotkey default | grep "SS58 Address" | awk "{print \$NF}")
+    read -p "请输入您的 Hotkey 钱包地址: " HOTKEY_ADDRESS
     ./vanacli dlp approve_validator --validator_address="$HOTKEY_ADDRESS"
 
-    # 创建.env文件
-    cat <<EOF > $DLP_PATH/.env
+    # 创建 .env 文件
+    echo "创建 .env 文件..."
+    read -p "请输入 DLP 合约地址: " DLP_CONTRACT
+    read -p "请输入 DLP Token 合约地址: " DLP_TOKEN_CONTRACT
+    read -p "请输入 OpenAI API Key: " OPENAI_API_KEY
+
+    cat <<EOF > /root/vana-dlp-chatgpt/.env
+# The network to use, currently Vana Moksha testnet
 OD_CHAIN_NETWORK=moksha
 OD_CHAIN_NETWORK_ENDPOINT=https://rpc.moksha.vana.org
-EOF
-    echo "请手动编辑 $DLP_PATH/.env 文件，添加 OPENAI_API_KEY, DLP_MOKSHA_CONTRACT, 和 DLP_TOKEN_MOKSHA_CONTRACT"
-    read -p "编辑完成后按回车继续"
 
-    # 创建PM2配置文件
-    cat <<EOF > $DLP_PATH/ecosystem.config.js
+# Optional: OpenAI API key for additional data quality check
+OPENAI_API_KEY="$OPENAI_API_KEY"
+
+# Optional: Your own DLP smart contract address once deployed to the network, useful for local testing
+DLP_MOKSHA_CONTRACT="$DLP_CONTRACT"
+
+# Optional: Your own DLP token contract address once deployed to the network, useful for local testing
+DLP_TOKEN_MOKSHA_CONTRACT="$DLP_TOKEN_CONTRACT"
+EOF
+
+    # 创建 PM2 配置文件
+    cat <<EOF > /root/vana-dlp-chatgpt/ecosystem.config.js
 module.exports = {
   apps: [{
     name: "vana-validator",
-    script: "poetry",
+    script: "$HOME/.local/bin/poetry",
     args: "run python -m chatgpt.nodes.validator",
-    cwd: "$DLP_PATH",
+    cwd: "/root/vana-dlp-chatgpt",
     interpreter: "none",
     env: {
-      PATH: "/root/.local/bin:/usr/local/bin:/usr/bin:/bin:$DLP_PATH/.venv/bin",
-      PYTHONPATH: "$DLP_PATH",
+      PATH: "/root/.local/bin:/usr/local/bin:/usr/bin:/bin:/root/vana-dlp-chatgpt/myenv/bin",
+      PYTHONPATH: "/root/vana-dlp-chatgpt",
     },
     restart_delay: 10000,
     max_restarts: 10,
@@ -99,7 +140,7 @@ module.exports = {
 EOF
 
     # 启动验证器
-    pm2 start $DLP_PATH/ecosystem.config.js
+    pm2 start /root/vana-dlp-chatgpt/ecosystem.config.js
     pm2 save
 
     # 保持容器运行
