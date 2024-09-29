@@ -13,7 +13,7 @@ fi
 # 在Ubuntu 22.04容器中安装并运行DLP Validator节点
 function install_dlp_node() {
     echo "在 Docker 容器中安装 DLP Validator 节点..."
-    docker run -it --name dlp-validator-container -w /root ubuntu:22.04 /bin/bash -c '
+    docker run -it --name dlp-validator-container -e PATH="/root/.local/bin:$PATH" -w /root ubuntu:22.04 /bin/bash -c '
     # 更新并安装必要的依赖
     apt update && apt upgrade -y
     apt install -y curl wget jq make gcc nano git software-properties-common
@@ -24,8 +24,7 @@ function install_dlp_node() {
     apt update
     apt install -y python3.11 python3.11-venv python3.11-dev python3-pip
     curl -sSL https://install.python-poetry.org | python3 -
-    # 直接在当前会话中设置 PATH
-    export PATH="/root/.local/bin:$PATH" 
+
 
     echo "验证 Poetry 安装..."
     poetry --version
@@ -93,7 +92,7 @@ function install_dlp_node() {
     # 注册验证器
     cd $HOME
     cd vana-dlp-chatgpt
-    ./vanacli dlp register_validator --stake_amount 10
+    ./vanacli dlp register_validator --stake_amount 1
     read -p "请输入您的 Hotkey 钱包地址: " HOTKEY_ADDRESS
     ./vanacli dlp approve_validator --validator_address="$HOTKEY_ADDRESS"
 
