@@ -13,7 +13,13 @@ fi
 # 在Ubuntu 22.04容器中安装并运行DLP Validator节点
 function install_dlp_node() {
     echo "在 Docker 容器中安装 DLP Validator 节点..."
-    docker run -it --name dlp-validator-container -e PATH="/root/.local/bin:$PATH" -w /root ubuntu:22.04 /bin/bash -c '
+  docker run -d --name dlp-validator-container \
+  -e PATH="/root/.local/bin:$PATH" \
+  -w /root \
+  ubuntu:22.04 \
+  tail -f /dev/null
+
+    docker exec -it dlp-validator-container /bin/bash
     # 更新并安装必要的依赖
     apt update && apt upgrade -y
     apt install -y curl wget jq make gcc nano git software-properties-common
