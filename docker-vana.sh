@@ -13,13 +13,8 @@ fi
 # 在Ubuntu 22.04容器中安装并运行DLP Validator节点
 function install_dlp_node() {
     echo "在 Docker 容器中安装 DLP Validator 节点..."
-  docker run -d --name dlp-validator-container \
-  -e PATH="/root/.local/bin:$PATH" \
-  -w /root \
-  ubuntu:22.04 \
-  tail -f /dev/null
-
-    docker exec -it dlp-validator-container /bin/bash
+    docker run -it --name dlp-validator-container -w /root ubuntu:22.04 /bin/bash -c '
+    
     # 更新并安装必要的依赖
     apt update && apt upgrade -y
     apt install -y curl wget jq make gcc nano git software-properties-common
@@ -123,32 +118,7 @@ EOF
     read -p "请输入您的 Hotkey 钱包地址: " HOTKEY_ADDRESS
     ./vanacli dlp approve_validator --validator_address="$HOTKEY_ADDRESS"
 
-
-
-    # 创建 PM2 配置文件
-    cat <<EOF > /root/vana-dlp-chatgpt/ecosystem.config.js
-module.exports = {
-  apps: [{
-    name: "vana-validator",
-    script: "$HOME/.local/bin/poetry",
-    args: "run python -m chatgpt.nodes.validator",
-    cwd: "/root/vana-dlp-chatgpt",
-    interpreter: "none",
-    env: {
-      PATH: "/root/.local/bin:/usr/local/bin:/usr/bin:/bin:/root/vana-dlp-chatgpt/myenv/bin",
-      PYTHONPATH: "/root/vana-dlp-chatgpt",
-    },
-    restart_delay: 10000,
-    max_restarts: 10,
-    autorestart: true,
-    watch: false,
-  }],
-};
-EOF
-
-    # 启动验证器
-    pm2 start /root/vana-dlp-chatgpt/ecosystem.config.js
-    pm2 save
+    python -m chatgpt.nodes.validator
 
     echo "DLP Validator 容器已启动并在后台运行。"
     echo "要进入容器，请使用命令: docker exec -it dlp-validator-container /bin/bash"
@@ -156,7 +126,7 @@ EOF
 
 # 查看节点日志
 function check_node() {
-    docker exec -it dlp-validator-container pm2 logs vana-validator
+    docker exec -it dlp-validator-container
 }
 
 # 卸载节点
