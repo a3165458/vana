@@ -41,6 +41,8 @@ function install_dlp_node() {
     git clone https://github.com/vana-com/vana-dlp-chatgpt.git
     cd vana-dlp-chatgpt
     cp .env.example .env
+    python3.11 -m venv myenv
+    source myenv/bin/activate
     poetry install
     pip install vana
 
@@ -118,9 +120,10 @@ EOF
     ./vanacli dlp approve_validator --validator_address="$HOTKEY_ADDRESS"
 
 
-    run python -m chatgpt.nodes.validator",
+python3.11 -m chatgpt.nodes.validator
 
-    '
+tail -f /dev/null
+'
 
     echo "DLP Validator 容器已启动并在后台运行。"
     echo "要进入容器，请使用命令: docker exec -it dlp-validator-container /bin/bash"
