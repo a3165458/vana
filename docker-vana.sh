@@ -92,9 +92,6 @@ function install_dlp_node() {
     # 注册验证器
     cd $HOME
     cd vana-dlp-chatgpt
-    ./vanacli dlp register_validator --stake_amount 1
-    read -p "请输入您的 Hotkey 钱包地址: " HOTKEY_ADDRESS
-    ./vanacli dlp approve_validator --validator_address="$HOTKEY_ADDRESS"
 
     # 创建 .env 文件
     echo "创建 .env 文件..."
@@ -116,6 +113,11 @@ DLP_MOKSHA_CONTRACT="$DLP_CONTRACT"
 # Optional: Your own DLP token contract address once deployed to the network, useful for local testing
 DLP_TOKEN_MOKSHA_CONTRACT="$DLP_TOKEN_CONTRACT"
 EOF
+    ./vanacli dlp register_validator --stake_amount 1
+    read -p "请输入您的 Hotkey 钱包地址: " HOTKEY_ADDRESS
+    ./vanacli dlp approve_validator --validator_address="$HOTKEY_ADDRESS"
+
+
 
     # 创建 PM2 配置文件
     cat <<EOF > /root/vana-dlp-chatgpt/ecosystem.config.js
