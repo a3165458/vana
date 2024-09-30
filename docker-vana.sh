@@ -113,7 +113,7 @@ DLP_MOKSHA_CONTRACT="$DLP_CONTRACT"
 # Optional: Your own DLP token contract address once deployed to the network, useful for local testing
 DLP_TOKEN_MOKSHA_CONTRACT="$DLP_TOKEN_CONTRACT"
 EOF
-    ./vanacli dlp register_validator --stake_amount 1
+    ./vanacli dlp register_validator --stake_amount 10
     read -p "请输入您的 Hotkey 钱包地址: " HOTKEY_ADDRESS
     ./vanacli dlp approve_validator --validator_address="$HOTKEY_ADDRESS"
 
