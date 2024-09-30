@@ -150,10 +150,6 @@ EOF
     pm2 start /root/vana-dlp-chatgpt/ecosystem.config.js
     pm2 save
 
-    # 保持容器运行
-    tail -f /dev/null
-    '
-
     echo "DLP Validator 容器已启动并在后台运行。"
     echo "要进入容器，请使用命令: docker exec -it dlp-validator-container /bin/bash"
 }
