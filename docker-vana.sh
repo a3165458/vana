@@ -13,8 +13,7 @@ fi
 # 在Ubuntu 22.04容器中安装并运行DLP Validator节点
 function install_dlp_node() {
     echo "在 Docker 容器中安装 DLP Validator 节点..."
-    docker run -it --name dlp-validator-container -w /root ubuntu:22.04 /bin/bash -c ''
-    
+    docker run -it --name dlp-validator-container -e PATH="/root/.local/bin:$PATH" -w /root ubuntu:22.04 /bin/bash -c '
     # 更新并安装必要的依赖
     apt update && apt upgrade -y
     apt install -y curl wget jq make gcc nano git software-properties-common
@@ -114,11 +113,14 @@ DLP_MOKSHA_CONTRACT="$DLP_CONTRACT"
 # Optional: Your own DLP token contract address once deployed to the network, useful for local testing
 DLP_TOKEN_MOKSHA_CONTRACT="$DLP_TOKEN_CONTRACT"
 EOF
-    ./vanacli dlp register_validator --stake_amount 10
+    ./vanacli dlp register_validator --stake_amount 1
     read -p "请输入您的 Hotkey 钱包地址: " HOTKEY_ADDRESS
     ./vanacli dlp approve_validator --validator_address="$HOTKEY_ADDRESS"
 
-    python -m chatgpt.nodes.validator
+
+    run python -m chatgpt.nodes.validator",
+
+    '
 
     echo "DLP Validator 容器已启动并在后台运行。"
     echo "要进入容器，请使用命令: docker exec -it dlp-validator-container /bin/bash"
@@ -126,7 +128,7 @@ EOF
 
 # 查看节点日志
 function check_node() {
-    docker exec -it dlp-validator-container bash
+    docker exec -it dlp-validator-container pm2 logs vana-validator
 }
 
 # 卸载节点
