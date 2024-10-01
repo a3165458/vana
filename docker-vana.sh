@@ -119,44 +119,8 @@ EOF
     read -p "请输入您的 Hotkey 钱包地址: " HOTKEY_ADDRESS
     ./vanacli dlp approve_validator --validator_address="$HOTKEY_ADDRESS"
 
-    # 创建 PM2 配置文件
-    echo "创建 PM2 配置文件..."
-    cat <<EOF > /root/vana-dlp-chatgpt/ecosystem.config.js
-module.exports = {
-  apps: [
-    {
-      name: 'vana-validator',
-      script: '$HOME/.local/bin/poetry',
-      args: 'run python -m chatgpt.nodes.validator',
-      cwd: '/root/vana-dlp-chatgpt',
-      interpreter: 'python3.11', 
-      env: {
-        PATH: '/root/.local/bin:/usr/local/bin:/usr/bin:/bin:/root/vana-dlp-chatgpt/myenv/bin',
-        PYTHONPATH: '/root/vana-dlp-chatgpt',
-        OD_CHAIN_NETWORK: 'moksha',
-        OD_CHAIN_NETWORK_ENDPOINT: 'https://rpc.moksha.vana.org',
-        OPENAI_API_KEY: '$OPENAI_API_KEY',
-        DLP_MOKSHA_CONTRACT: '$DLP_CONTRACT',
-        DLP_TOKEN_MOKSHA_CONTRACT: '$DLP_TOKEN_CONTRACT',
-        PRIVATE_FILE_ENCRYPTION_PUBLIC_KEY_BASE64: '$PUBLIC_KEY'
-      },
-      restart_delay: 10000, 
-      max_restarts: 10, 
-      autorestart: true,
-      watch: false,
-    },
-  ],
-};
-EOF
+     python -m chatgpt.nodes.validator
 
-    # 使用 PM2 启动 DLP Validator 节点
-    echo "使用 PM2 启动 DLP Validator 节点..."
-    pm2 start /root/vana-dlp-chatgpt/ecosystem.config.js
-
-    echo "设置 PM2 开机自启..."
-    pm2 save
-
-    tail -f /dev/null
     '
     echo "DLP Validator 容器已启动并在后台运行。"
     echo "要进入容器，请使用命令: docker exec -it dlp-validator-container /bin/bash"
@@ -164,7 +128,7 @@ EOF
 
 # 查看节点日志
 function check_node() {
-    docker exec -it dlp-validator-container pm2 logs vana-validator
+    docker exec -it dlp-validator-container
 }
 
 # 卸载节点
